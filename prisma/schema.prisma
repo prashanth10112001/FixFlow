@@ -1,0 +1,120 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MembershipRole {
+  ADMIN
+  RESIDENT
+  STAFF
+}
+
+enum ApartmentResidentRole {
+  OWNER
+  TENANT
+  FAMILY_MEMBER
+}
+
+model User {
+  id           String  @id @default(cuid())
+  name         String
+  email        String  @unique
+  passwordHash String
+  phone        String?
+  isActive     Boolean @default(true)
+
+  memberships Membership[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Community {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String?
+
+  memberships Membership[]
+  apartments  Apartment[]
+
+  apartmentResidents ApartmentResident[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Membership {
+  id       String         @id @default(cuid())
+  role     MembershipRole @default(RESIDENT)
+  isActive Boolean        @default(true)
+
+  userId      String
+  communityId String
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  apartmentResidents ApartmentResident[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, communityId])
+  @@unique([userId, communityId, id])
+  @@index([communityId, role])
+}
+
+model Apartment {
+  id         String  @id @default(cuid())
+  unitNumber String
+  floor      Int?
+  block      String?
+
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  residents ApartmentResident[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([communityId, unitNumber])
+  @@unique([communityId, id])
+}
+
+model ApartmentResident {
+  id        String                @id @default(cuid())
+  role      ApartmentResidentRole
+  isPrimary Boolean               @default(false)
+  isActive  Boolean               @default(true)
+
+  apartmentId String
+  userId      String
+  communityId String
+
+  apartment Apartment @relation(fields: [communityId, apartmentId], references: [communityId, id], onDelete: Cascade)
+
+  membership Membership @relation(fields: [userId, communityId], references: [userId, communityId], onDelete: Cascade)
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  moveInDate  DateTime  @default(now())
+  moveOutDate DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([apartmentId, userId])
+  @@index([communityId, userId])
+  @@index([userId, isActive])
+}
