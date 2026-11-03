@@ -724,5 +724,268 @@ http://localhost:3000/api/v1/auth/session
 
 ### As we got error due to we haven't provided basePath at src/auth.js, then after giving it worked.
 
-13.
+13. build the custom login page next, using Next.js, TypeScript, Tailwind CSS and shadcn/ui for authentication and authorization.
+
+#### src/app/(auth)/login/login-form.tsx
+
+```tsx
+"use client";
+
+import { useState } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+export default function LoginForm() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    setError("");
+    setIsLoading(true);
+
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setError("Invalid email or password.");
+        return;
+      }
+
+      //   window.location.href = "/dashboard";
+      router.refresh();
+      router.push("/dashboard");
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div>
+        <label
+          htmlFor="email"
+          className="mb-2 block text-sm font-medium text-gray-700"
+        >
+          Email address
+        </label>
+
+        <input
+          id="email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          autoComplete="email"
+          required
+          className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-black"
+        />
+      </div>
+
+      <div>
+        <label
+          htmlFor="password"
+          className="mb-2 block text-sm font-medium text-gray-700"
+        >
+          Password
+        </label>
+
+        <input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Enter your password"
+          autoComplete="current-password"
+          required
+          className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-black"
+        />
+      </div>
+
+      {error && (
+        <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</p>
+      )}
+
+      <button
+        type="submit"
+        disabled={isLoading}
+        className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700  disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {isLoading ? "Signing in..." : "Sign in"}
+      </button>
+
+      <p className="text-center text-sm text-gray-600">
+        Don&apos;t have an account?{" "}
+        <Link
+          href="/register"
+          className="font-semibold text-blue-600 hover:underline"
+        >
+          Create an account
+        </Link>
+      </p>
+    </form>
+  );
+}
+```
+
+#### src/app/(auth)/login/login-form.tsx
+
+```tsx
+import LoginForm from "./login-form";
+
+export default function LoginPage() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12">
+      <div className="w-full max-w-md">
+        {/* Brand */}
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold tracking-tight text-blue-600">
+            FixFlow
+          </h1>
+
+          <p className="mt-2 text-sm text-gray-500">
+            Apartment maintenance, simplified.
+          </p>
+        </div>
+
+        {/* Login Card */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+          <h2 className="text-2xl font-bold text-gray-900">Welcome back</h2>
+
+          <p className="mt-2 text-sm text-gray-500">
+            Sign in to manage your apartment community.
+          </p>
+
+          <div className="mt-8">
+            <LoginForm />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <p className="mt-8 text-center text-xs text-gray-400">
+          &copy; 2026 FixFlow. All rights reserved.
+        </p>
+      </div>
+    </main>
+  );
+}
+```
+
+- Instead of using Auth.js internal sign we want to create our own login form so we added pages in src/auth.ts
+
+##### src/auth.ts
+
+```jsx
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  basePath: "/api/v1/auth",
+
+  pages: {
+    signIn: "/login",
+  },
+  ...
+});
+```
+
+- As we have provided base path for server side, but not for client side so we have created providers file with basepath.
+
+#### src/app/providers.tsx
+
+```tsx
+"use client";
+
+import { SessionProvider } from "next-auth/react";
+
+export default function Providers({ children }: { children: React.ReactNode }) {
+  return <SessionProvider basePath="/api/v1/auth">{children}</SessionProvider>;
+}
+```
+
+- And linked to our root layout children
+
+src/app/layout.tsx
+
+```tsx
+import Providers from "./providers";
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Create Next App",
+  description: "Generated by create next app",
+};
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">
+        {" "}
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
+}
+```
+
+- As we are redirecting to our dashboard so created a dashboard in the group of residents
+
+#### src/app/(resident)/dashboard/page.tsx
+
+```tsx
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+
+export default async function DashboardPage() {
+  const session = await auth();
+
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  return (
+    <main className="min-h-screen bg-gray-50 p-8">
+      <div className="mx-auto max-w-5xl">
+        <h1 className="text-3xl font-bold text-gray-900">Welcome to FixFlow</h1>
+
+        <p className="mt-2 text-gray-600">
+          Hello, {session.user.name ?? "Resident"}!
+        </p>
+
+        <div className="mt-8 rounded-xl border bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-semibold">Resident Dashboard</h2>
+
+          <p className="mt-2 text-gray-500">
+            Your apartment maintenance workspace will appear here.
+          </p>
+        </div>
+      </div>
+    </main>
+  );
+}
+```
+
 14.
