@@ -560,13 +560,13 @@ export async function POST(request: Request) {
 npm install next-auth@beta
 ```
 
-- Next we generate a secret for our auth
+- Next we generate a secret for our auth and save as AUTH_SECRET=\*\*\*
 
 ```bash
 npx auth secret
 ```
 
-- Then we create a src/auth.ts for authentication
+- Then we create a src/auth.ts for authentication, use JWT for 7 days
 
 ##### src/auth.ts
 
@@ -584,6 +584,12 @@ const loginSchema = z.object({
 });
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  basePath: "/api/v1/auth",
+  session: {
+    strategy: "jwt",
+    maxAge: 7 * 24 * 60 * 60, // 7 days
+  },
+
   providers: [
     Credentials({
       credentials: {
@@ -635,6 +641,88 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
 });
 ```
+
+- create a auth.js secret for our authentication using command
+
+```bash
+npx auth secret
+```
+
+- Now lets create an catch-all route for our authentication.
+
+#### src/app/api/auth/[...nextauth]/route.ts
+
+```ts
+import { handlers } from "@/auth";
+
+export const { GET, POST } = handlers;
+```
+
+##### Now lets try to test these URLs
+
+- At first it gives
+
+```html
+http://localhost:3000/api/v1/auth/providers
+```
+
+```js
+{
+  "credentials": {
+    "id": "credentials",
+    "name": "Credentials",
+    "type": "credentials",
+    "signinUrl": "http://localhost:3000/api/v1/auth/signin/credentials",
+    "callbackUrl": "http://localhost:3000/api/v1/auth/callback/credentials"
+  }
+}
+```
+
+```html
+http://localhost:3000/api/v1/auth/session
+```
+
+```js
+null;
+```
+
+#### But we try to sign-in using Auth.js internal route
+
+##### http://localhost:3000/api/v1/auth/signin
+
+- by entering email and password that we have tested for registration, we get
+
+```html
+http://localhost:3000/api/v1/auth/providers
+```
+
+```js
+{
+  "credentials": {
+    "id": "credentials",
+    "name": "Credentials",
+    "type": "credentials",
+    "signinUrl": "http://localhost:3000/api/v1/auth/signin/credentials",
+    "callbackUrl": "http://localhost:3000/api/v1/auth/callback/credentials"
+  }
+}
+```
+
+```html
+http://localhost:3000/api/v1/auth/session
+```
+
+```js
+{
+  "user": {
+    "name": "Test Resident",
+    "email": "resident@example.com"
+  },
+  "expires": "2026-11-10T18:41:54.650Z"
+}
+```
+
+### As we got error due to we haven't provided basePath at src/auth.js, then after giving it worked.
 
 13.
 14.
